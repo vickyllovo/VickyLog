@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VickyLog</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F1EB;--bg2:#EBE6DC;--bg3:#E0D9CC;
+  --card:#FDFCF9;--card2:#F7F4EE;
+  --g:#4E7D5B;--g2:#3A6145;--g3:#DCE DDB;--g4:#C4D9C8;
+  --g3:#DCEADD;--g4:#C4D9C8;
+  --t:#18181A;--t2:#585650;--t3:#989490;
+  --sep:#E2DBD0;--sep2:#CEC7BB;
+  --amber:#C47C2A;--blue:#4A68B0;--rose:#B04A6A;
+  --nav:64px;--r:16px;--rs:10px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:var(--bg);
+  color:var(--t);font-family:-apple-system,'PingFang SC',sans-serif;-webkit-font-smoothing:antialiased;}
+.serif{font-family:'Playfair Display',Georgia,serif;}
+button,input,textarea,select{font-family:inherit;}
+
+/* SHELL */
+#app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;}
+#pages{flex:1;overflow:hidden;position:relative;}
+.pg{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;}
+.pg.on{display:flex;}
+.sy{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* NAV */
+nav{flex:none;height:var(--nav);background:rgba(253,252,249,0.95);border-top:1px solid var(--sep);
+  display:flex;justify-content:space-around;align-items:center;
+  padding-bottom:env(safe-area-inset-bottom);backdrop-filter:blur(16px);}
+.ni{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 14px;
+  border-radius:14px;cursor:pointer;transition:all 0.2s;}
+.ni.on{background:var(--g3);}
+.nsvg{width:22px;height:22px;stroke:var(--t3);fill:none;stroke-width:1.5;
+  stroke-linecap:round;stroke-linejoin:round;transition:stroke 0.2s;}
+.ni.on .nsvg{stroke:var(--g);}
+.nlb{font-size:10px;color:var(--t3);font-weight:500;transition:color 0.2s;}
+.ni.on .nlb{color:var(--g);font-weight:700;}
+
+/* ══════════════════════
+   PLAN PAGE
+══════════════════════ */
+.plan-top{flex:none;padding:max(env(safe-area-inset-top),16px) 16px 0;}
+.plan-week-strip{display:flex;gap:6px;padding:12px 16px;overflow-x:auto;flex:none;
+  scrollbar-width:none;-ms-overflow-style:none;}
+.plan-week-strip::-webkit-scrollbar{display:none;}
+.wday{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;
+  flex:none;width:40px;}
+.wday-name{font-size:10px;color:var(--t3);font-weight:500;}
+.wday-num{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:600;color:var(--t);transition:all 0.15s;}
+.wday.on .wday-num{background:var(--g);color:#fff;}
+.wday.today .wday-name{color:var(--g);font-weight:700;}
+.wday.today .wday-num{border:2px solid var(--g);}
+.wday.on.today .wday-num{background:var(--g);border-color:var(--g);color:#fff;}
+.wday-dots{display:flex;gap:2px;height:5px;align-items:center;}
+.wday-dot{width:4px;height:4px;border-radius:50%;background:var(--sep2);}
+.wday-dot.has{background:var(--g4);}
+.wday-dot.on{background:var(--g);}
+
+.plan-day-card{margin:0 16px 16px;background:var(--card);border-radius:var(--r);
+  border:1px solid var(--sep);overflow:hidden;}
+.pdc-head{padding:16px 16px 12px;border-bottom:1px solid var(--sep);
+  display:flex;justify-content:space-between;align-items:center;}
+.pdc-title{font-size:13px;font-weight:600;color:var(--t2);margin-bottom:5px;letter-spacing:.2px;}
+.pdc-date{font-size:22px;font-weight:700;color:var(--t);font-family:'Playfair Display',serif;}
+.pdc-dow{font-size:13px;color:var(--t2);margin-left:6px;}
+.pdc-note-btn{font-size:11px;color:var(--g);background:var(--g3);border:none;border-radius:20px;
+  padding:4px 10px;cursor:pointer;font-weight:500;}
+.pdc-tasks{padding:8px 16px;}
+.task-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--sep);}
+.task-row:last-child{border-bottom:none;}
+.task-chk{width:20px;height:20px;border-radius:50%;border:2px solid var(--sep2);background:var(--card);
+  flex:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.task-chk.on{background:var(--g);border-color:var(--g);}
+.task-chk.on::after{content:'';width:5px;height:8px;border:2px solid #fff;
+  border-top:0;border-left:0;transform:rotate(45deg) translate(-1px,-1px);}
+.task-title{flex:1;font-size:14px;color:var(--t);}
+.task-title.done{text-decoration:line-through;color:var(--t3);}
+.task-time{font-size:11px;color:var(--t3);}
+.task-del{background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;padding:0 2px;}
+.empty-tasks{padding:24px 16px;text-align:center;color:var(--t3);font-size:13px;font-style:italic;}
+.add-task-bar{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--sep);background:var(--card2);}
+.add-task-inp{flex:1;border:none;background:transparent;font-size:14px;color:var(--t);outline:none;}
+.add-task-inp::placeholder{color:var(--t3);}
+.add-task-btn{width:32px;height:32px;background:var(--g);color:#fff;border:none;border-radius:50%;
+  font-size:20px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;}
+
+/* week nav */
+.week-nav{display:flex;justify-content:space-between;align-items:center;padding:0 16px 4px;}
+.wn-btn{background:none;border:none;color:var(--t2);font-size:22px;cursor:pointer;padding:4px 8px;}
+.wn-label{font-size:12px;font-weight:600;color:var(--t2);}
+
+/* inbox strip */
+.inbox-strip{margin:0 16px 10px;background:var(--card);border-radius:var(--r);
+  border:1px solid var(--sep);overflow:hidden;}
+.inbox-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;
+  border-bottom:1px solid var(--sep);cursor:pointer;}
+.inbox-head-label{font-size:11px;font-weight:700;color:var(--amber);letter-spacing:0.5px;}
+.inbox-head-count{font-size:11px;color:var(--t3);}
+.inbox-body{padding:8px 14px;}
+.ib-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--sep);}
+.ib-item:last-child{border-bottom:none;}
+.ib-chk{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--t3);flex:none;cursor:pointer;position:relative;}
+.ib-chk.on{background:var(--amber);border-color:var(--amber);}
+.ib-chk.on::after{content:'✓';position:absolute;font-size:8px;color:#fff;top:-1px;left:1px;}
+.ib-tx{flex:1;font-size:12px;color:var(--t);}
+.ib-tx.done{text-decoration:line-through;color:var(--t3);}
+.ib-del{background:none;border:none;color:var(--t3);font-size:14px;cursor:pointer;}
+.ib-add-row{display:flex;gap:6px;padding:8px 14px;background:var(--card2);border-top:1px solid var(--sep);}
+.ib-add-inp{flex:1;border:none;background:transparent;font-size:13px;color:var(--t);outline:none;}
+.ib-add-inp::placeholder{color:var(--t3);}
+.ib-add-btn{width:26px;height:26px;background:var(--amber);color:#fff;border:none;
+  border-radius:50%;font-size:16px;cursor:pointer;flex:none;}
+
+/* ══════════════════════
+   HABITS PAGE
+══════════════════════ */
+.hab-top{flex:none;padding:max(env(safe-area-inset-top),16px) 16px 12px;}
+.hab-eyebrow{font-size:10px;font-weight:700;color:var(--g);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.hab-title{font-size:24px;font-weight:700;color:var(--t);font-family:'Playfair Display',serif;}
+
+/* daily habit streak card */
+.hcard{background:var(--card);border-radius:var(--r);border:1px solid var(--sep);
+  padding:16px;margin-bottom:10px;overflow:hidden;}
+.hcard-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+.hcard-name{font-size:16px;font-weight:600;color:var(--t);}
+.hcard-time{font-size:11px;color:var(--t3);margin-top:2px;display:flex;align-items:center;gap:3px;}
+.hcard-streak{text-align:right;}
+.hcard-streak-num{font-size:28px;font-weight:700;color:var(--g);font-family:'Playfair Display',serif;line-height:1;}
+.hcard-streak-label{font-size:9px;color:var(--t3);letter-spacing:0.5px;}
+.hmap{display:grid;grid-template-rows:repeat(7,11px);grid-auto-flow:column;
+  grid-auto-columns:11px;gap:2px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;}
+.hmc{width:11px;height:11px;border-radius:2px;background:var(--bg2);}
+.hmc.done{background:var(--g);}
+.hmc.mk{opacity:0.45;}
+.hmc.ft{background:transparent;}
+.hcard-foot{display:flex;justify-content:space-between;align-items:center;}
+.hkin{background:var(--g);color:#fff;border:none;border-radius:var(--rs);
+  padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s;}
+.hkin.off{background:var(--g3);color:var(--g2);}
+.hdel{background:none;border:none;color:var(--t3);font-size:12px;cursor:pointer;}
+
+/* weekly habit */
+.whcard{background:var(--card);border-radius:var(--r);border:1px solid var(--sep);
+  padding:16px;margin-bottom:10px;}
+.whcard-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.whcard-name{font-size:16px;font-weight:600;color:var(--t);}
+.whcard-prog{font-size:11px;color:var(--t2);}
+.whpbar{height:3px;background:var(--bg2);border-radius:10px;overflow:hidden;margin-bottom:12px;}
+.whpfill{height:100%;background:var(--g);border-radius:10px;transition:width 0.3s;}
+.whgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.whcell{border-radius:10px;padding:6px 2px;display:flex;flex-direction:column;
+  align-items:center;gap:3px;border:1px solid transparent;cursor:pointer;transition:all 0.15s;}
+.whcell.has{background:var(--g3);border-color:var(--g4);}
+.whcell.has.done{background:var(--g);border-color:var(--g);}
+.whcell.tday{border-color:var(--g)!important;}
+.whcell-dl{font-size:9px;font-weight:600;color:var(--t3);}
+.whcell.has .whcell-dl{color:var(--g2);}
+.whcell.has.done .whcell-dl{color:rgba(255,255,255,0.8);}
+.whcell-mark{font-size:14px;line-height:1;}
+.whcell-task{font-size:7px;color:var(--g2);text-align:center;line-height:1.2;overflow:hidden;max-height:16px;}
+.whcell.done .whcell-task{color:rgba(255,255,255,0.75);}
+.whcell-dot{font-size:12px;color:var(--bg3);}
+
+/* ══════════════════════
+   SUMMARY PAGE
+══════════════════════ */
+.sum-top{flex:none;padding:max(env(safe-area-inset-top),16px) 16px 12px;}
+.sum-eyebrow{font-size:10px;font-weight:700;color:var(--g);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.sum-title{font-size:26px;font-weight:700;color:var(--t);font-family:'Playfair Display',serif;line-height:1.2;}
+
+/* month calendar */
+.sum-cal{margin:0 16px;background:var(--card);border-radius:var(--r);
+  border:1px solid var(--sep);overflow:hidden;flex:none;}
+.sum-cal-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;
+  border-bottom:1px solid var(--sep);}
+.sum-cal-month{font-size:16px;font-weight:700;color:var(--t);font-family:'Playfair Display',serif;}
+.sum-cal-count{font-size:11px;color:var(--t3);}
+.scal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 10px 4px;}
+.scal-wd{text-align:center;font-size:9px;font-weight:600;color:var(--t3);}
+.scal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:0 12px 14px;}
+.scell{border-radius:12px;padding:6px 4px 5px;display:flex;flex-direction:column;min-height:62px;
+  cursor:pointer;border:1px solid var(--sep);background:white;overflow:hidden;
+  transition:transform 0.1s,opacity 0.1s;position:relative;}
+.scell:active{transform:scale(0.95);opacity:0.85;}
+.scell.today{background:#EBF5E8;border-color:#90C890;border-width:1.5px;}
+.scell.haspic{border-color:var(--sep2);}
+.scell.hastask{background:#F6FAF6;}
+.scell.empty{opacity:0.18;cursor:default;background:var(--bg2);border-color:transparent;}
+.scell-num{font-size:12px;font-weight:700;color:var(--t);line-height:1;padding:0 2px;}
+.scell.today .scell-num{color:var(--g2);}
+.scell-photo{width:calc(100% + 0px);aspect-ratio:1/1;object-fit:cover;border-radius:6px;margin-top:3px;}
+.scell-tag{font-size:7px;padding:2px 3px;border-radius:4px;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;font-weight:500;}
+.scell-tag.pend{background:#D8EAD8;color:#3A6145;}
+.scell-tag.done{background:#ECEAE4;color:var(--t3);text-decoration:line-through;}
+.scell-tag.hab{background:#FDE8D0;color:#7A4020;}
+.scell-dot{width:5px;height:5px;border-radius:50%;background:#9B59B6;
+  margin-top:auto;align-self:flex-end;margin-bottom:1px;margin-right:2px;}
+
+/* day detail sheet */
+.day-sheet{margin:10px 16px;background:var(--card);border-radius:var(--r);
+  border:1px solid var(--sep);overflow:hidden;}
+.ds-head{padding:14px 16px;background:var(--g3);border-bottom:1px solid var(--g4);
+  display:flex;justify-content:space-between;align-items:baseline;}
+.ds-date{font-size:20px;font-weight:700;color:var(--g2);font-family:'Playfair Display',serif;}
+.ds-close{background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;}
+.ds-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
+.ds-sec{font-size:9px;font-weight:700;color:var(--g);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.ds-task{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t);padding:2px 0;}
+.ds-chk{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--t3);flex:none;}
+.ds-chk.on{background:var(--g);border-color:var(--g);}
+.ds-tag{font-size:11px;background:var(--g3);color:var(--g2);padding:3px 8px;border-radius:10px;}
+.ds-photo-area{display:flex;gap:8px;flex-wrap:wrap;}
+.ds-photo{width:72px;height:72px;border-radius:10px;object-fit:cover;}
+.ds-photo-add{width:72px;height:72px;border-radius:10px;border:1.5px dashed var(--sep2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:10px;color:var(--t3);cursor:pointer;gap:4px;}
+.ds-note{width:100%;border:1px solid var(--sep);border-radius:10px;padding:10px;font-size:13px;
+  background:var(--bg);color:var(--t);outline:none;resize:none;height:80px;line-height:1.6;font-family:inherit;}
+.ds-note:focus{border-color:var(--g);}
+
+/* ══════════════════════
+   LISTS PAGE
+══════════════════════ */
+.lists-top{flex:none;padding:max(env(safe-area-inset-top),16px) 16px 12px;}
+.lcard{background:var(--card);border-radius:var(--r);border:1px solid var(--sep);
+  margin:0 16px 12px;overflow:hidden;}
+.lcard-head{padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:center;}
+.lcard-name{font-size:16px;font-weight:600;color:var(--t);}
+.lcard-del{background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;}
+.lprog{margin:0 16px 10px;display:flex;align-items:center;gap:8px;}
+.lprogbar{flex:1;height:4px;background:var(--bg2);border-radius:10px;overflow:hidden;}
+.lprogfill{height:100%;background:var(--g);border-radius:10px;}
+.lprogl{font-size:11px;color:var(--t2);}
+.litems{padding:0 16px 4px;max-height:200px;overflow-y:auto;}
+.litem{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--sep);}
+.litem:last-child{border-bottom:none;}
+.lchk{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--t3);flex:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;}
+.lchk.on{background:var(--g);border-color:var(--g);}
+.lchk.on::after{content:'';width:4px;height:7px;border:2px solid #fff;border-top:0;border-left:0;transform:rotate(45deg) translate(-0.5px,-1px);}
+.litx{flex:1;font-size:13px;color:var(--t);}
+.litx.done{text-decoration:line-through;color:var(--t3);}
+.litem-del{background:none;border:none;color:var(--t3);font-size:14px;cursor:pointer;}
+.ladd{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--sep);background:var(--card2);}
+.ladd-inp{flex:1;border:none;background:transparent;font-size:13px;color:var(--t);outline:none;}
+.ladd-inp::placeholder{color:var(--t3);}
+.ladd-btn{width:30px;height:30px;background:var(--g);color:#fff;border:none;border-radius:50%;font-size:18px;cursor:pointer;flex:none;}
+.fab{position:fixed;bottom:calc(var(--nav) + 14px);right:16px;width:52px;height:52px;
+  background:var(--g);color:#fff;border:none;border-radius:50%;font-size:26px;cursor:pointer;
+  box-shadow:0 4px 20px rgba(78,125,91,0.4);z-index:40;}
+
+/* ══════════════════════
+   MY PAGE
+══════════════════════ */
+.my-banner{background:linear-gradient(160deg,#D8EADB,#C4D9C8);
+  padding:max(env(safe-area-inset-top),40px) 20px 28px;
+  display:flex;flex-direction:column;align-items:center;}
+.my-av{width:84px;height:84px;border-radius:50%;background:white;
+  border:3px solid rgba(255,255,255,0.7);display:flex;align-items:center;
+  justify-content:center;font-size:36px;cursor:pointer;overflow:hidden;
+  position:relative;box-shadow:0 4px 16px rgba(0,0,0,0.1);}
+.my-av img{width:100%;height:100%;object-fit:cover;}
+.my-av-ed{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.3);
+  color:#fff;font-size:9px;text-align:center;padding:3px 0;}
+.my-nm{font-size:22px;font-weight:700;color:var(--g2);margin-top:12px;font-family:'Playfair Display',serif;}
+.my-sub{font-size:11px;color:var(--g);margin-top:3px;cursor:pointer;text-decoration:underline;}
+.my-sec{background:var(--card);border-radius:var(--r);border:1px solid var(--sep);
+  margin:14px 16px 0;overflow:hidden;}
+.my-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;
+  border-bottom:1px solid var(--sep);}
+.my-row:last-child{border-bottom:none;}
+.my-rl{font-size:13px;color:var(--t);}
+.my-rv{font-size:12px;color:var(--t2);}
+.my-rb{font-size:12px;color:var(--g);background:none;border:none;cursor:pointer;font-weight:500;}
+
+/* MODAL */
+.mov{position:fixed;inset:0;background:rgba(16,16,14,0.5);backdrop-filter:blur(8px);
+  z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.mov.on{display:flex;}
+.msh{background:var(--card);border-radius:24px 24px 0 0;
+  padding:20px 20px max(20px,env(safe-area-inset-bottom));
+  width:100%;max-width:430px;max-height:85vh;overflow-y:auto;
+  animation:su 0.26s cubic-bezier(.34,1.4,.64,1);}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mhdl{width:36px;height:4px;background:var(--sep);border-radius:2px;margin:0 auto 18px;}
+.mttl{font-size:18px;font-weight:700;color:var(--t);margin-bottom:16px;
+  text-align:center;font-family:'Playfair Display',serif;}
+.minp{width:100%;border:1px solid var(--sep);border-radius:12px;padding:12px 14px;
+  font-size:14px;background:var(--bg);color:var(--t);outline:none;margin-bottom:10px;}
+.minp:focus{border-color:var(--g);}
+.mbtn{width:100%;background:var(--g);color:#fff;border:none;border-radius:12px;
+  padding:14px;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;}
+.mbtn2{width:100%;background:var(--bg2);color:var(--t);border:none;border-radius:12px;
+  padding:13px;font-size:14px;cursor:pointer;margin-top:8px;}
+
+/* Calendar refresh: roomy, paper-like month grid */
+#pg-sum .sum-top{padding:calc(max(env(safe-area-inset-top),12px) + 4px) 18px 12px;}
+#pg-sum .sum-title{font-size:23px;line-height:1.18;}
+#pg-sum .sy{padding:0 8px 24px;}
+#pg-sum .sum-cal{margin:0 4px;background:#F6F1E7;border:0;border-radius:0;overflow:visible;}
+#pg-sum .sum-cal-head{padding:10px 6px 12px;border:0;}
+#pg-sum .sum-cal-month{font-size:19px;letter-spacing:.2px;}
+#pg-sum .sum-cal-count{font-size:10px;}
+#pg-sum .scal-weekdays{padding:0 2px 8px;gap:5px;}
+#pg-sum .scal-wd{font-size:12px;font-weight:500;color:#82796C;}
+#pg-sum .scal-grid{grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(6,minmax(78px,1fr));gap:5px;padding:0 0 10px;}
+#pg-sum .scell{min-width:0;min-height:78px;height:100%;padding:7px 5px 5px;border:1px solid #E8E1D6;border-radius:13px;background:#FFFDFA;}
+#pg-sum .scell.empty{opacity:.42;background:#F0EBE2;border-color:transparent;}
+#pg-sum .scell.today{background:#C9DDF6;border:1.5px solid #A7C6ED;}
+#pg-sum .scell.selected{outline:2px solid #7FA77C;outline-offset:-2px;background:#F5E2CF;}
+#pg-sum .scell-num{font-size:15px;font-weight:600;line-height:1.1;padding:0 1px;}
+#pg-sum .scell-tag{font-size:clamp(7px,2.1vw,10px);padding:3px 4px;border-radius:5px;margin-top:3px;line-height:1.2;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+#pg-sum .scell-tag.pend{background:#E3EFD7;color:#496D40;}
+#pg-sum .scell-tag.done{background:#F0EDE6;color:#8D887F;}
+#pg-sum .scell-tag.hab{background:#FBE2D5;color:#985A3D;}
+#pg-sum .scell-photo{aspect-ratio:1/1;}
+#pg-sum .day-sheet{margin:8px 4px 0;}
+#pg-plan .add-task-btn{width:38px;height:38px;box-shadow:0 2px 7px #4e7d5b35;touch-action:manipulation;}
+#pg-plan .add-task-bar{align-items:center;min-height:58px;}
+#pg-plan .add-task-inp{min-width:0;min-height:38px;touch-action:manipulation;}
+button,label,.scell,.wday{touch-action:manipulation;}
+@media(max-height:720px){#pg-sum .scal-grid{grid-template-rows:repeat(6,minmax(66px,1fr));}#pg-sum .scell{min-height:66px;padding:5px 4px 4px;}}
+
+</style>
+</head>
+<body>
+<div id="app">
+<div id="pages">
+
+<!-- PLAN -->
+<div class="pg on" id="pg-plan">
+  <div class="plan-top">
+    <div style="font-size:10px;font-weight:700;color:var(--g);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Weekly Plan</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:22px;font-weight:700;color:var(--t);font-family:'Playfair Display',serif;" id="week-title">第 43 周</div>
+      <div style="display:flex;gap:4px;">
+        <button style="background:none;border:none;color:var(--t2);font-size:20px;cursor:pointer;padding:4px 8px;" onclick="chgWk(-1)">‹</button>
+        <button style="background:var(--g);color:#fff;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;" onclick="goToday()">今</button>
+        <button style="background:none;border:none;color:var(--t2);font-size:20px;cursor:pointer;padding:4px 8px;" onclick="chgWk(1)">›</button>
+      </div>
+    </div>
+  </div>
+  <!-- week strip -->
+  <div class="plan-week-strip" id="week-strip"></div>
+  <!-- inbox -->
+  <div class="inbox-strip" id="inbox-strip">
+    <div class="inbox-head" onclick="toggleInbox()">
+      <span class="inbox-head-label">📦 杂物间</span>
+      <span class="inbox-head-count" id="ib-count"></span>
+    </div>
+    <div id="ib-body" style="display:none;">
+      <div class="inbox-body" id="ib-list"></div>
+      <div class="ib-add-row">
+        <input class="ib-add-inp" id="ib-inp" placeholder="快速记下来...">
+        <button type="button" class="ib-add-btn" id="ib-add-btn" aria-label="添加杂物">+</button>
+      </div>
+    </div>
+  </div>
+  <!-- day card -->
+  <div class="sy" style="padding-bottom:16px;">
+    <div class="plan-day-card">
+      <div class="pdc-head">
+        <div><div class="pdc-title" id="pdc-title">自定义昵称的今日计划</div><span class="pdc-date" id="pdc-date"></span><span class="pdc-dow" id="pdc-dow"></span></div>
+        <button class="pdc-note-btn" onclick="openDayNote()">写总结</button>
+      </div>
+      <div class="pdc-tasks" id="pdc-tasks"></div>
+      <div class="add-task-bar">
+        <div class="task-entry" style="display:flex;flex:1;min-width:0;flex-direction:column;gap:5px;"><input class="add-task-inp" id="task-inp" placeholder="添加今日计划..." autocomplete="off"><input id="task-deadline" type="datetime-local" aria-label="截止时间" style="width:100%;border:0;background:transparent;color:var(--t3);font-size:11px;outline:none;"></div>
+        <button type="button" class="add-task-btn" id="add-task-btn" aria-label="新建计划">+</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HABITS -->
+<div class="pg" id="pg-hab">
+  <div class="hab-top">
+    <div class="hab-eyebrow">Habits · 习惯</div>
+    <div class="hab-title">养成好习惯，<br>一天一点点。</div>
+  </div>
+  <div style="display:flex;gap:8px;padding:0 16px 12px;flex:none;">
+    <button style="flex:1;padding:9px;border-radius:10px;border:1px solid var(--sep);background:var(--bg2);color:var(--t2);font-size:12px;font-weight:500;cursor:pointer;" id="htab-daily" onclick="swHTab('daily')">每日习惯</button>
+    <button style="flex:1;padding:9px;border-radius:10px;border:1px solid var(--g);background:var(--g);color:#fff;font-size:12px;font-weight:600;cursor:pointer;" id="htab-weekly" onclick="swHTab('weekly')">每周习惯</button>
+  </div>
+  <div class="sy" style="padding:0 16px 16px;" id="hab-body"></div>
+  <div style="padding:0 16px 16px;flex:none;">
+    <button style="width:100%;background:var(--g);color:#fff;border:none;border-radius:var(--r);padding:14px;font-size:14px;font-weight:600;cursor:pointer;" onclick="opAddH()">+ 新建习惯</button>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="pg" id="pg-sum">
+  <div class="sum-top">
+    <div class="sum-eyebrow">Life Archive · 生活留档</div>
+    <div class="sum-title" id="sum-title">自定义昵称的一天。</div>
+  </div>
+  <div class="sy" style="padding-bottom:20px;">
+    <div class="sum-cal" id="sum-cal"></div>
+    <div id="day-sheet-wrap"></div>
+  </div>
+</div>
+
+<!-- LISTS -->
+<div class="pg" id="pg-lists">
+  <div class="lists-top">
+    <div style="font-size:10px;font-weight:700;color:var(--g);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">My Lists · 我的清单</div>
+    <div style="font-size:24px;font-weight:700;color:var(--t);font-family:'Playfair Display',serif;">收藏每一件<br>想做的事。</div>
+  </div>
+  <div class="sy" style="padding-bottom:80px;" id="lists-body"></div>
+  <button class="fab" onclick="opNewList()">+</button>
+</div>
+
+<!-- MY -->
+<div class="pg" id="pg-my">
+  <div class="sy">
+    <div class="my-banner">
+      <div class="my-av" onclick="pickAv()">
+        <img id="avimg" src="" style="display:none;"><span id="avem">🌿</span>
+        <div class="my-av-ed">换头像</div>
+      </div>
+      <div class="my-nm" id="my-nm">自定义昵称</div>
+      <div class="my-sub" onclick="edNm()">修改昵称</div>
+    </div>
+    <div class="my-sec">
+      <div class="my-row"><span class="my-rl">云端同步</span><span class="my-rv" id="sync-st">未配置</span></div>
+      <div class="my-row"><span class="my-rl">最近同步</span><span class="my-rv" id="sync-last">—</span></div>
+      <div class="my-row"><span class="my-rl">同步设置</span><button class="my-rb" onclick="opM('m-sync')">配置 →</button></div>
+    </div>
+    <div class="my-sec">
+      <div class="my-row"><span class="my-rl">导出备份</span><button class="my-rb" onclick="expData()">导出 →</button></div>
+      <div class="my-row"><span class="my-rl">导入备份</span><label class="my-rb" style="cursor:pointer;">导入 →<input type="file" accept=".json" onchange="impData(event)" style="display:none;"></label></div>
+    </div>
+    <div class="my-sec" style="margin-bottom:20px;">
+      <div class="my-row"><span class="my-rl">版本</span><span class="my-rv">VickyLog v2.0</span></div>
+      <div class="my-row"><span class="my-rl">关于 VickyLog</span><button class="my-rb" onclick="opM('m-about')">查看 →</button></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /pages -->
+
+<nav>
+  <div class="ni on" onclick="sw('plan',this)">
+    <svg class="nsvg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="4" x2="9" y2="9"/><line x1="15" y1="4" x2="15" y2="9"/></svg>
+    <span class="nlb">计划</span>
+  </div>
+  <div class="ni" onclick="sw('hab',this)">
+    <svg class="nsvg" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    <span class="nlb">习惯</span>
+  </div>
+  <div class="ni" onclick="sw('sum',this)">
+    <svg class="nsvg" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span class="nlb">总结</span>
+  </div>
+  <div class="ni" onclick="sw('lists',this)">
+    <svg class="nsvg" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
+    <span class="nlb">清单</span>
+  </div>
+  <div class="ni" onclick="sw('my',this)">
+    <svg class="nsvg" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="nlb">我的</span>
+  </div>
+</nav>
+</div>
+
+<!-- MODALS -->
+<div class="mov" id="m-habit"><div class="msh">
+  <div class="mhdl"></div><div class="mttl">新建每日习惯</div>
+  <input class="minp" id="mh-nm" placeholder="习惯名称，如：喝中药">
+  <input class="minp" id="mh-tm" type="time">
+  <select class="minp" id="mh-cat"><option value="morning">🌅 早晨</option><option value="noon">☀️ 中午</option><option value="evening">🌙 晚上</option></select>
+  <button class="mbtn" onclick="svH()">保存</button>
+  <button class="mbtn2" onclick="clM('m-habit')">取消</button>
+</div></div>
+
+<div class="mov" id="m-wh"><div class="msh">
+  <div class="mhdl"></div><div class="mttl">新建每周习惯</div>
+  <input class="minp" id="mwh-nm" placeholder="习惯名称，如：护肤计划">
+  <div id="mwh-days"></div>
+  <button class="mbtn" onclick="svWH()">保存</button>
+  <button class="mbtn2" onclick="clM('m-wh')">取消</button>
+</div></div>
+
+<div class="mov" id="m-list"><div class="msh">
+  <div class="mhdl"></div><div class="mttl">新建清单</div>
+  <input class="minp" id="ml-nm" placeholder="清单名称">
+  <textarea class="minp" id="ml-items" placeholder="批量添加（每行一个，选填）" style="height:80px;resize:none;"></textarea>
+  <label style="display:block;margin-bottom:10px;">
+    <div style="border:1px dashed var(--sep2);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:var(--t2);cursor:pointer;">
+      📂 导入 TXT 文件<input type="file" accept=".txt,.csv" onchange="impTxt(event)" style="display:none;">
+    </div>
+  </label>
+  <button class="mbtn" onclick="svList()">创建</button>
+  <button class="mbtn2" onclick="clM('m-list')">取消</button>
+</div></div>
+
+<div class="mov" id="m-daynote"><div class="msh">
+  <div class="mhdl"></div>
+  <div class="mttl" id="m-daynote-title">今日总结</div>
+  <textarea class="minp" id="m-daynote-ta" placeholder="记录今天的感想..." style="height:120px;resize:none;"></textarea>
+  <label style="display:block;margin-bottom:10px;">
+    <div style="border:1px dashed var(--sep2);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:var(--t2);cursor:pointer;">
+      📷 上传照片<input type="file" accept="image/*" onchange="upDayPhoto(event)" style="display:none;">
+    </div>
+  </label>
+  <div id="m-photos-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+  <button class="mbtn" onclick="svDayNote()">保存</button>
+  <button class="mbtn2" onclick="clM('m-daynote')">取消</button>
+</div></div>
+
+<div class="mov" id="m-sync"><div class="msh">
+  <div class="mhdl"></div><div class="mttl">Supabase 云端储存</div>
+  <div style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:10px;">首次设置需要创作者配置一次 Supabase 项目地址和 anon key。普通用户只需注册自己的账号，不需要创建仓库。</div>
+  <input class="minp" id="sb-url" placeholder="Supabase Project URL，例如 https://xxx.supabase.co" autocomplete="url">
+  <input class="minp" id="sb-key" placeholder="Supabase anon / publishable key" autocomplete="off">
+  <button class="mbtn" onclick="saveSbConfig()">保存连接配置</button>
+  <div style="height:1px;background:var(--sep);margin:14px 0;"></div>
+  <input class="minp" id="sb-email" type="email" placeholder="邮箱地址" autocomplete="email">
+  <input class="minp" id="sb-password" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password">
+  <div style="display:flex;gap:8px;margin-top:8px;">
+    <button style="flex:1;background:var(--g3);color:var(--g2);border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;" onclick="sbSignUp()">注册账号</button>
+    <button style="flex:1;background:var(--bg2);color:var(--t);border:none;border-radius:12px;padding:12px;font-size:13px;cursor:pointer;" onclick="sbSignIn()">登录并同步</button>
+  </div>
+  <button class="mbtn2" onclick="sbSignOut()">退出登录</button>
+  <button class="mbtn2" onclick="clM('m-sync')">关闭</button>
+</div></div>
+
+<div class="mov" id="m-about"><div class="msh">
+  <div class="mhdl"></div>
+  <div style="text-align:center;padding:10px 0 20px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+    <div style="font-size:48px;">🌿</div>
+    <div style="font-size:24px;font-weight:700;color:var(--g2);font-family:'Playfair Display',serif;">VickyLog</div>
+    <div style="font-size:13px;color:var(--t2);line-height:1.8;">把日子慢慢收好。<br>一款简单温柔的个人手账。</div>
+    <div style="background:var(--bg2);border-radius:12px;padding:14px 20px;width:100%;">
+      <div style="font-size:11px;color:var(--t3);margin-bottom:5px;">有想法或建议，欢迎联系开发者</div>
+      <a href="mailto:vickylovo657@outlook.com" style="font-size:13px;color:var(--g);font-weight:600;">vickylovo657@outlook.com</a>
+    </div>
+    <div style="font-size:11px;color:var(--t3);">v2.0 · 2026 · Made with 🌿</div>
+  </div>
+  <button class="mbtn2" onclick="clM('m-about')">关闭</button>
+</div></div>
+
+<input type="file" id="av-file" accept="image/*" style="display:none;" onchange="hdAv(event)">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SK='vl-free',SBK='vl-supabase-config';
+let sbClient=null,sbUser=null,sbSaveTimer=null,sbApplyingCloud=false,sbBusy=false;
+const WD=['周一','周二','周三','周四','周五','周六','周日'];
+let db={tasks:[],inbox:[],habits:[],wh:[],notes:{},sum:{},lists:[],photos:{},gph:[],nm:'自定义昵称',av:'',yn:{}};
+let cMon=getMon(new Date()),cWK=getWK(cMon),selD=tdi(),htab='daily',selPhotoDay=null;
+
+function tdi(){const d=new Date().getDay();return d===0?6:d-1;}
+function getMon(d){const dt=new Date(d);dt.setHours(0,0,0,0);const day=dt.getDay();return new Date(dt.setDate(dt.getDate()-day+(day===0?-6:1)));}
+function getWK(m){const t=new Date(m);t.setDate(t.getDate()+3);const ys=new Date(t.getFullYear(),0,1);return t.getFullYear()+'-W'+String(Math.ceil(((t-ys)/86400000+1)/7)).padStart(2,'0');}
+function fd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function tds(){return fd(new Date());}
+function gdd(i){const d=new Date(cMon);d.setDate(d.getDate()+i);return d;}
+function e(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function ld(){try{const d=localStorage.getItem(SK);if(d){const parsed=JSON.parse(d);db=normalizeImportedData(parsed);}}catch(err){console.warn('本地数据读取失败',err);} ['tasks','inbox','habits','wh','lists','gph'].forEach(k=>{if(!Array.isArray(db[k]))db[k]=[];});['notes','sum','photos','yn'].forEach(k=>{if(!db[k]||typeof db[k]!=='object')db[k]={};});if(!db.nm)db.nm='自定义昵称';if(!db.av)db.av='';}
+function sv(){try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){if(e.name==='QuotaExceededError')alert('本地存储已满，请导出备份并清理部分照片。');}if(!sbApplyingCloud&&sbClient&&sbUser)scheduleSbSave();}
+
+// NAV
+function sw(name,el){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  document.getElementById('pg-'+name).classList.add('on');
+  el.classList.add('on');
+  if(name==='plan')rPlan();
+  else if(name==='hab')rHab();
+  else if(name==='sum')rSum();
+  else if(name==='lists')rLists();
+  else if(name==='my')rMy();
+}
+
+// PLAN
+function chgWk(d){cMon=new Date(cMon);cMon.setDate(cMon.getDate()+d*7);cWK=getWK(cMon);selD=0;rPlan();}
+function goToday(){cMon=getMon(new Date());cWK=getWK(cMon);selD=tdi();rPlan();}
+
+function rPlan(){
+  const wn=cWK.split('-W')[1];
+  document.getElementById('week-title').textContent='第 '+wn+' 周';
+  // week strip
+  const strip=document.getElementById('week-strip');strip.innerHTML='';
+  for(let i=0;i<7;i++){
+    const dt=gdd(i);const ds=fd(dt);const isT=ds===tds();
+    const tasks=db.tasks.filter(t=>t.wk===cWK&&t.d===i);
+    const el=document.createElement('div');
+    el.className='wday'+(selD===i?' on':'')+(isT?' today':'');
+    el.innerHTML=`<span class="wday-name">${WD[i].slice(1)}</span>
+      <div class="wday-num">${dt.getDate()}</div>
+      <div class="wday-dots">${[0,1,2].map(j=>`<div class="wday-dot${tasks[j]?' has':''}${tasks[j]&&selD===i?' on':''}"></div>`).join('')}</div>`;
+    el.onclick=()=>{selD=i;rPlan();};
+    strip.appendChild(el);
+  }
+  // inbox count
+  const ibCount=db.inbox.filter(t=>!t.done).length;
+  document.getElementById('ib-count').textContent=ibCount?`${ibCount} 项未完成`:'空空如也';
+  rIbList();
+  // day card
+  const dt=gdd(selD);const isT=fd(dt)===tds();
+  document.getElementById('pdc-title').textContent=`${db.nm||'自定义昵称'}的今日计划`;
+  document.getElementById('pdc-date').textContent=`${dt.getMonth()+1}月${dt.getDate()}日`;
+  document.getElementById('pdc-dow').textContent=` ${WD[selD]}`;
+  const tasks=db.tasks.filter(t=>t.wk===cWK&&t.d===selD);
+  const tc=document.getElementById('pdc-tasks');tc.innerHTML='';
+  if(!tasks.length){tc.innerHTML='<div class="empty-tasks">今天还没有计划，点击下方添加</div>';}
+  else{tasks.forEach(t=>{
+    const row=document.createElement('div');row.className='task-row';
+    row.innerHTML=`<div class="task-chk${t.done?' on':''}" onclick="togT('${t.id}')"></div>
+      <span class="task-title${t.done?' done':''}">${e(t.title)}</span>
+      ${t.dueDate?`<span class="task-time">截止 ${e(String(t.dueDate).replace('T',' '))}</span>`:''}
+      <button class="task-del" onclick="delT('${t.id}')">×</button>`;
+    tc.appendChild(row);
+  });}
+}
+
+function rIbList(){
+  const list=document.getElementById('ib-list');list.innerHTML='';
+  db.inbox.forEach((t,i)=>{
+    list.innerHTML+=`<div class="ib-item"><div class="ib-chk${t.done?' on':''}" onclick="togIb(${i})"></div>
+      <span class="ib-tx${t.done?' done':''}">${e(t.text)}</span>
+      <button class="ib-del" onclick="delIb(${i})">×</button></div>`;
+  });
+  if(!db.inbox.length)list.innerHTML='<div style="font-size:12px;color:var(--t3);text-align:center;padding:8px 0;font-style:italic;">清空了，很棒</div>';
+}
+function toggleInbox(){const b=document.getElementById('ib-body');b.style.display=b.style.display==='none'?'block':'none';}
+function addIb(){
+  const inp=document.getElementById('ib-inp');if(!inp)return;
+  const t=inp.value.trim();if(!t){inp.focus();return;}
+  db.inbox.push({id:'ib-'+Date.now()+Math.random().toString(36).slice(2),text:t,done:false});
+  inp.value='';sv();rPlan();
+  const body=document.getElementById('ib-body');if(body)body.style.display='block';
+}
+function togIb(i){if(!db.inbox[i])return;db.inbox[i].done=!db.inbox[i].done;sv();rPlan();}
+function delIb(i){db.inbox.splice(i,1);sv();rPlan();}
+function addTask(){
+  const inp=document.getElementById('task-inp');if(!inp)return;
+  const title=inp.value.trim();if(!title){inp.focus();return;}
+  const dt=gdd(selD),wk=getWK(getMon(dt)),di=(dt.getDay()+6)%7;
+  const deadline=document.getElementById('task-deadline');
+  const dueDate=deadline?deadline.value:'';
+  db.tasks.push({id:'t-'+Date.now()+Math.random().toString(36).slice(2),wk,d:di,date:fd(dt),title,done:false,dueDate});
+  inp.value='';if(deadline)deadline.value='';sv();rPlan();
+}
+function togT(id){const t=db.tasks.find(x=>x.id===id);if(t){t.done=!t.done;sv();rPlan();}}
+function delT(id){if(!confirm('删除？'))return;db.tasks=db.tasks.filter(x=>x.id!==id);sv();rPlan();}
+
+// day note / photo
+let pendingPhoto=null;
+function openDayNote(){
+  const dt=gdd(selD);const ds=fd(dt);const wk=getWK(getMon(dt));const di=(dt.getDay()+6)%7;
+  const nk=`dn-${wk}-${di}`;
+  document.getElementById('m-daynote-title').textContent=`${dt.getMonth()+1}月${dt.getDate()}日 · 总结`;
+  document.getElementById('m-daynote-ta').value=db.notes[nk]||'';
+  selPhotoDay={wk,di,nk,ds};pendingPhoto=null;
+  rPhotoPreview();opM('m-daynote');
+}
+function upDayPhoto(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=x=>{pendingPhoto=x.target.result;rPhotoPreview();};r.readAsDataURL(f);ev.target.value='';}
+function rPhotoPreview(){
+  const wrap=document.getElementById('m-photos-preview');wrap.innerHTML='';
+  if(!selPhotoDay)return;
+  const existing=(db.photos[selPhotoDay.nk]||[]);
+  [...existing,...(pendingPhoto?[pendingPhoto]:[])].forEach((src,i)=>{
+    wrap.innerHTML+=`<img src="${src}" style="width:64px;height:64px;border-radius:8px;object-fit:cover;">`;
+  });
+}
+function svDayNote(){
+  if(!selPhotoDay)return;
+  const {nk}=selPhotoDay;
+  db.notes[nk]=document.getElementById('m-daynote-ta').value;
+  if(pendingPhoto){if(!db.photos[nk])db.photos[nk]=[];db.photos[nk].push(pendingPhoto);}
+  sv();clM('m-daynote');rPlan();if(document.getElementById('pg-sum').classList.contains('on'))rSum();
+}
+
+// HABITS
+function swHTab(tab){htab=tab;
+  document.getElementById('htab-daily').style.cssText='flex:1;padding:9px;border-radius:10px;border:1px solid var(--sep);background:var(--bg2);color:var(--t2);font-size:12px;font-weight:500;cursor:pointer;';
+  document.getElementById('htab-weekly').style.cssText='flex:1;padding:9px;border-radius:10px;border:1px solid var(--sep);background:var(--bg2);color:var(--t2);font-size:12px;font-weight:500;cursor:pointer;';
+  document.getElementById('htab-'+tab).style.cssText='flex:1;padding:9px;border-radius:10px;border:1px solid var(--g);background:var(--g);color:#fff;font-size:12px;font-weight:600;cursor:pointer;';
+  rHab();}
+function opAddH(){if(htab==='daily'){document.getElementById('mh-nm').value='';document.getElementById('mh-tm').value='';opM('m-habit');}
+  else{document.getElementById('mwh-nm').value='';const dc=document.getElementById('mwh-days');dc.innerHTML='';
+    WD.forEach((d,i)=>{dc.innerHTML+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;color:var(--t2);width:28px;flex:none;">${d}</span><input class="minp" id="whd${i}" placeholder="这天的任务" style="margin:0;flex:1;font-size:12px;padding:8px 10px;"></div>`;});opM('m-wh');}}
+function svH(){const n=document.getElementById('mh-nm').value.trim();if(!n){alert('请输入名称');return;}
+  db.habits.push({id:'h-'+Date.now(),name:n,time:document.getElementById('mh-tm').value,cat:document.getElementById('mh-cat').value,rec:{}});sv();clM('m-habit');rHab();}
+function svWH(){const n=document.getElementById('mwh-nm').value.trim();if(!n){alert('请输入名称');return;}
+  const tasks={};WD.forEach((_,i)=>{const v=document.getElementById('whd'+i).value.trim();if(v)tasks[i]=v;});
+  db.wh.push({id:'wh-'+Date.now(),name:n,tasks,rec:{}});sv();clM('m-wh');rHab();}
+
+function rHab(){
+  const body=document.getElementById('hab-body');body.innerHTML='';
+  const today=tds();
+  const COLS=['#4E7D5B','#C47C2A','#4A68B0','#B04A6A','#2A9D8F','#8B4AAD'];
+  if(htab==='daily'){
+    if(!db.habits.length){body.innerHTML='<div style="text-align:center;color:var(--t3);padding:60px 0;font-style:italic;">还没有每日习惯</div>';return;}
+    db.habits.forEach((h,hi)=>{
+      let streak=0;let d=new Date();
+      while(h.rec[fd(d)]==='done'||h.rec[fd(d)]===true){streak++;d.setDate(d.getDate()-1);}
+      const col=COLS[hi%COLS.length];
+      let hm='';const cm=getMon(new Date());const td=new Date();
+      for(let w=12;w>=0;w--){const ws=new Date(cm);ws.setDate(ws.getDate()-w*7);
+        for(let dd=0;dd<7;dd++){const dt=new Date(ws);dt.setDate(dt.getDate()+dd);const ds=fd(dt);
+          if(dt>td){hm+=`<div class="hmc ft"></div>`;}
+          else{const v=h.rec[ds];const isDone=v==='done'||v===true;const isMk=v==='mk';
+            hm+=`<div class="hmc${isDone?' done':isMk?' mk':''}" style="${isDone?'background:'+col:isMk?'background:'+col:'background:var(--bg2)'}" onclick="cycH('${h.id}','${ds}')" title="${ds}"></div>`;}}}
+      const ck=h.rec[today]==='done'||h.rec[today]===true;
+      const card=document.createElement('div');card.className='hcard';
+      card.innerHTML=`<div class="hcard-top">
+        <div><div class="hcard-name">${e(h.name)}</div>${h.time?`<div class="hcard-time">⏰ ${h.time}</div>`:''}</div>
+        <div class="hcard-streak"><div class="hcard-streak-num">${streak}</div><div class="hcard-streak-label">连续天数</div></div>
+      </div>
+      <div class="hmap">${hm}</div>
+      <div class="hcard-foot">
+        <button class="hkin${ck?' off':''}" onclick="togHT('${h.id}')">${ck?'✅ 已打卡':'⭕ 今日打卡'}</button>
+        <button class="hdel" onclick="delH('${h.id}',false)">删除</button>
+      </div>`;
+      body.appendChild(card);
+    });
+  } else {
+    if(!db.wh.length){body.innerHTML='<div style="text-align:center;color:var(--t3);padding:60px 0;font-style:italic;">还没有每周习惯</div>';return;}
+    const tdi2=tdi();
+    db.wh.forEach(h=>{
+      const pl=Object.keys(h.tasks).filter(k=>h.tasks[k]);
+      const done=pl.filter(i=>h.rec[`${cWK}-${i}`]==='done').length;
+      const total=pl.length;const pct=total?Math.round(done/total*100):0;
+      let gd='';WD.forEach((d,i)=>{const hasT=!!h.tasks[i];const isDone=h.rec[`${cWK}-${i}`]==='done';const isT=i===tdi2;
+        gd+=`<div class="whcell${hasT?' has':''}${isDone?' done':''}${isT?' tday':''}" onclick="${hasT?`togWH('${h.id}',${i})`:''}">
+          <span class="whcell-dl">${d.slice(1)}</span>
+          ${hasT?(isDone?'<span class="whcell-mark">✓</span>':'<span class="whcell-mark" style="color:var(--g)">○</span>'):'<span class="whcell-dot">·</span>'}
+          ${hasT&&h.tasks[i]?`<span class="whcell-task">${e(h.tasks[i])}</span>`:''}
+        </div>`;
+      });
+      const card=document.createElement('div');card.className='whcard';
+      card.innerHTML=`<div class="whcard-top"><div class="whcard-name">${e(h.name)}</div><span class="whcard-prog">${done}/${total} · ${pct}%</span></div>
+        <div class="whpbar"><div class="whpfill" style="width:${pct}%"></div></div>
+        <div class="whgrid">${gd}</div>`;
+      body.appendChild(card);
+    });
+  }
+}
+function togHT(id){const h=db.habits.find(x=>x.id===id);if(!h)return;const t=tds();
+  if(h.rec[t]==='done'||h.rec[t]===true)delete h.rec[t];else h.rec[t]='done';sv();rHab();}
+function cycH(id,ds){const h=db.habits.find(x=>x.id===id);if(!h)return;const v=h.rec[ds];
+  if(!v)h.rec[ds]='mk';else if(v==='mk')h.rec[ds]='done';else delete h.rec[ds];sv();rHab();}
+function togWH(id,di){const h=db.wh.find(x=>x.id===id);if(!h)return;const k=`${cWK}-${di}`;
+  if(h.rec[k]==='done')delete h.rec[k];else h.rec[k]='done';sv();rHab();}
+function delH(id,isW){if(!confirm('删除？'))return;if(isW)db.wh=db.wh.filter(x=>x.id!==id);else db.habits=db.habits.filter(x=>x.id!==id);sv();rHab();}
+
+// SUMMARY
+let openDayKey=null;
+let sumMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+function chgSumMonth(delta){sumMonth=new Date(sumMonth.getFullYear(),sumMonth.getMonth()+delta,1);rSum();}
+function rSum(){
+  const title=document.getElementById('sum-title');if(title)title.textContent=`${db.nm||'自定义昵称'}的一天。`;
+  const y=sumMonth.getFullYear(),m=sumMonth.getMonth(),mn=(m+1)+'月';
+  const cal=document.getElementById('sum-cal');
+  const dim=new Date(y,m+1,0).getDate();
+  const firstDow=new Date(y,m,1).getDay(),offset=firstDow===0?6:firstDow-1;
+  const recDays=new Set();
+  for(let day=1;day<=dim;day++){
+    const dt=new Date(y,m,day),wk=getWK(getMon(dt)),di=(dt.getDay()+6)%7;
+    if(db.tasks.some(t=>t.wk===wk&&Number(t.d)===di)||(db.notes[`dn-${wk}-${di}`]||'').trim()||(db.photos[`dn-${wk}-${di}`]||[]).length)recDays.add(fd(dt));
+  }
+  let cells='';
+  for(let i=0;i<offset;i++)cells+=`<div class="scell empty"><span class="scell-num">${new Date(y,m,0).getDate()-offset+i+1}</span></div>`;
+  for(let day=1;day<=dim;day++){
+    const dt=new Date(y,m,day),ds=fd(dt),wk=getWK(getMon(dt)),di=(dt.getDay()+6)%7,nk=`dn-${wk}-${di}`;
+    const tasks=db.tasks.filter(t=>t.wk===wk&&Number(t.d)===di);
+    const habs=db.habits.filter(h=>h.rec&&(h.rec[ds]==='done'||h.rec[ds]===true));
+    const photos=Array.isArray(db.photos[nk])?db.photos[nk]:[];
+    const hasnote=!!(db.notes[nk]&&String(db.notes[nk]).trim());
+    const isT=ds===tds(),isSel=!!(openDayKey&&openDayKey.ds===ds);
+    let inner=`<span class="scell-num">${day}</span>`;
+    if(photos.length){inner+=`<img class="scell-photo" src="${photos[0]}" alt="">`;if(hasnote)inner+=`<div class="scell-dot" style="position:absolute;bottom:4px;right:4px;"></div>`;}
+    else{
+      const pend=tasks.filter(t=>!t.done),done=tasks.filter(t=>t.done);
+      pend.slice(0,2).forEach(t=>inner+=`<div class="scell-tag pend">${e(t.title)}</div>`);
+      done.slice(0,1).forEach(t=>inner+=`<div class="scell-tag done">${e(t.title)}</div>`);
+      if(!tasks.length)habs.slice(0,1).forEach(h=>inner+=`<div class="scell-tag hab">${e(h.name)}</div>`);
+      if(hasnote)inner+=`<div class="scell-dot"></div>`;
+    }
+    cells+=`<div class="scell${isT?' today':''}${isSel?' selected':''}" onclick="openDaySheet('${ds}','${wk}',${di},'${nk}')">${inner}</div>`;
+  }
+  const total=offset+dim,trailing=(42-total%42)%7;
+  for(let i=1;i<=trailing;i++)cells+=`<div class="scell empty"><span class="scell-num">${i}</span></div>`;
+  // Keep a fixed six-row calendar, like a real monthly planner rather than a collapsing spreadsheet.
+  while((cells.match(/class="scell/g)||[]).length<42)cells+=`<div class="scell empty"></div>`;
+  cal.innerHTML=`<div class="sum-cal-head"><div style="display:flex;align-items:center;gap:8px;min-width:0;"><button type="button" onclick="chgSumMonth(-1)" aria-label="上个月" style="border:0;background:var(--bg2);color:var(--t2);border-radius:8px;width:28px;height:28px;font-size:20px;line-height:1;cursor:pointer;">‹</button><span class="sum-cal-month">${y}年 ${mn}</span><button type="button" onclick="chgSumMonth(1)" aria-label="下个月" style="border:0;background:var(--bg2);color:var(--t2);border-radius:8px;width:28px;height:28px;font-size:20px;line-height:1;cursor:pointer;">›</button></div><span class="sum-cal-count">${recDays.size} 天有记录</span></div><div class="scal-weekdays">${['一','二','三','四','五','六','日'].map(d=>`<div class="scal-wd">${d}</div>`).join('')}</div><div class="scal-grid">${cells}</div>`;
+  if(openDayKey)rDaySheet(openDayKey);
+}
+
+function openDaySheet(ds,wk,di,nk){
+  openDayKey={ds,wk,di,nk};rDaySheet({ds,wk,di,nk});}
+function rDaySheet({ds,wk,di,nk}){
+  const dt=new Date(ds);const wrap=document.getElementById('day-sheet-wrap');
+  const tasks=db.tasks.filter(t=>t.wk===wk&&Number(t.d)===Number(di));
+  const habs=db.habits.filter(h=>h.rec[ds]==='done'||h.rec[ds]===true);
+Const photos=db.photos[nk]||[]；
+  const note=db.notes[nk]||'';
+Constlabel='${dt.getMonth()+1}月${dt.getDate()}日·${WD[di]}'；
+让photosHtml=photos.map(p=>'<img class="ds-photo"src="${p}"alt="">').join(")；
+photosHtml+='<div class="ds-photo-add"onClick="openDayNoteFrom('${ds}'，${wk？"${wk}"：'null'}，${di}，'${nk}')"><span style="font-size:18px；">📷</span><span>添加照片</span></div>'；
+wrap.innerHTML='<div class="day-sheet">
+<div class="ds-head">
+<span class="ds-date">${label}</span>
+<button class="ds-close"onClick="openDayKey=null；文档。getElementById('day-sheet-wrap')。innerHTML="；">×</button>
+</div>
+<div class="ds-body">
+<div>
+<div class="ds-sec">今日计划·今日计划</div>
+${tasks.length？tasks.map(t=>'<div class="ds-task"><div class="ds-chk${t.done？'on'："}"></div>${e(t.title)}</div>').join(")：'<div style="font-size:12px；color:var(--t3)；font-style:italic；">今天没有计划</div>'}
+</div>
+<div>
+<div class="ds-sec">小习惯·习惯</div>
+<div style="display:flex；flex-wrap:wrap；gap:5px；">${habs.长度？Habs.图(h=>'<span class="ds-tag">✓ ${e(h.名称)}</span>')。联接(")：'<span style="font-size:12px；color:var(--t3)；font-style:italic；">-</span>'}</div>
+</div>
+<div>
+<div class="ds-sec">快照·留下的片刻</div>
+<div class="ds-photo-area">${photosHtml}</div>
+</div>
+<div>
+<div class="ds-sec">亲爱的我·今日感受</div>
+<textarea class="ds-note"占位符="写下今天..."onChange="db.notes['${nk}']=this。value；sv()；">${e(note)}</textarea>
+</div>
+</div>
+</div>'；
+包。scrollIntoView({行为：'smooth'，区块：'start'})；
+}
+function openDayNoteFrom(ds,wk,di,nk){
+  const dt=new Date(ds);
+  document.getElementById('m-daynote-title').textContent=`${dt.getMonth()+1}月${dt.getDate()}日 · 照片`;
+  document.getElementById('m-daynote-ta').value=db.notes[nk]||'';
+  selPhotoDay={wk,di,nk,ds};pendingPhoto=null;rPhotoPreview();opM('m-daynote');
+}
+
+//列表
+功能 opNewList(){文件.getElementById('ml-nm').价值='';文件.getElementById('ml-items').价值='';OPM('m-list');}
+功能 impTxt(电动汽车){Const f=电动汽车.目标.文件[0];如果(!f)返回;Const r=新的 FileReader();r.onload=x=>{文件.getElementById('ml-items').价值+=(文件.getElementById('ml-items').价值?'\n':'')+x.目标.结果.修剪();};r.readAsText(f);电动汽车.目标.价值='';}
+功能 svList(){Const n=文件.getElementById('ml-nm').价值.修剪();如果(!n){警惕的('请输入清单名称');返回;}
+  Const 生的=文件.getElementById('ml-items').价值.修剪();
+  Const 项目=生的?生的.分离('\n').地图(t=>t.修剪()).过滤器(t=>t).地图(文本=>({身份标识:'i-'+日期.现在()+数学.随机().toString(36).片(2),文本,已完成:假的})):[];
+  DB.列表.推({身份标识:'l-'+日期.现在(),姓名:n,项目});SV();CLM('m-list');rlists();}
+功能 rlists(restoreScroll=正确){
+  Const 身体=文件.getElementById('lists-body');
+  // 重绘清单前记录页面和每张清单内部的滚动位置，避免勾选后跳回顶部。
+  Const pageScroll=身体 ? 身体.scrollTop : 0;
+  Const listScroll={};
+  如果(身体) 身体.querySelectorAll('.litems').foreach((埃尔,IDX)=>{listScroll[IDX]=埃尔.scrollTop;});
+  身体.innerHTML='';
+  如果(!DB.列表.长度){身体.innerHTML='<div style="text-align：居中；颜色：var(--t3)；填充：60px 0；字体样式：斜体；页边距：016px；">还没有清单，点右下角+新建</div>';返回;}
+  DB.列表.foreach(列表=>{
+    Const 全部的=列表.项目.长度,已完成=列表.项目.过滤器(我=>我.已完成).长度,PCT=全部的?数学.圆的(已完成/全部的*100):0;
+Const卡片=文件.createElement('div')；
+让项目=列表.项目.地图(项=>'<div class="lchk"><div class="lchk${项.已完成？'开启'：”}"onClick="togLI('${列表.身份标识}'，'${项.身份标识}')"></div><span class="Litx${项.已完成？'已完成'：”}">${e(项.文本)}</span><button class="litem-del"onclick="Delli('${列表.身份标识}'，'${项.身份标识}')">×</button></div>')。参加(”)；
+卡片.innerHTML='<div class="lcard">
+<div class="lcard-head"><span class="lcard-name">${e(列表.姓名)}</span><button class="lcard-del"onclick="delList('${列表.身份标识}')">🗑</button></div>
+<div class="lprog"><div class="lprogbar"><div class="lprogfill"style="width：${PCT}%"></div></div><span class="lprogl">${已完成}/${全部的}</span></div>
+<div class="litems">${项目||'<div style="font-size:12px；颜色：var(--t3)；填充：4px0；">暂无项目</div>'}</div>
+<div class="ladd"><input class="ladd-inp"type="text"占位符="添加项目..."OnKeyDown="if(event.key==='Enter')addLI('${列表.身份标识}'，this)"><button class="ladd-btn"onclick="addLI('${列表.身份标识}'，这。previousElementSibling)">+</button></div>
+</div>'；
+身体.appendChild(卡片)；
+  });
+如果(restoreScroll){
+身体.scrollTop=pageScroll；
+身体.querySelectorAll('.litems').forEach((埃尔，IDX)=>{如果(listScroll[IDX]！==未定义)埃尔.scrollTop=listScroll[IDX]；})；
+    // 部分移动端 WebView 在 DOM 重绘后会异步重置滚动位置，再补一次恢复。
+requestAnimationFrame(()=>{
+身体.scrollTop=pageScroll；
+身体.querySelectorAll('.litems').forEach((埃尔，IDX)=>{如果(listScroll[IDX]！==未定义)埃尔.scrollTop=listScroll[IDX]；})；
+    });
+  }
+}
+函数togLI(lid，iid){const l=db.lists.find(x=>x.id===lid)；const I=l&&l.项。find(x=>x.ID===iid)；如果(i){i.完成=！我。完成；SV()；rlists()；}}
+函数Delli(lid，iid){const L=db.lists.ind(x=>x.ID==lid)；如果(l){l.items=l.items.过滤器(x=>x.身份标识！==IID)；sv()；rlists()；}}
+函数addLI(lid，inp){const text=inp.value.trim()；if(！text)return；const l=db.lists.find(x=>x.id===lid);if(l){l.items.push({id:'i-'+Date.now()+Math.random().toString(36).slice(2),text,done:false});inp.value='';sv();rLists();}}
+函数delList(id){if(！confirm('删除？'))返回；db.lists=db.lists.filter(x=>x.身份标识！==ID)；sv()；rlists()；}
+
+//MY
+函数rmy(){
+文件。getElementById('my-nm').textContent=db。纳米||'自定义昵称'；
+Const IMG=文件。getElement ById('avimg')，em=文档。getElementById('avem')；
+if(db.AV){img.src=db.AV；img.风格。display='block'；em.风格。display='none'；}
+else{img.风格。display='none'；em.风格。display='block'；}
+Const cfg=getSbConfig()；
+常量状态=sb用户？'已登录·云端同步'：(cfg.url&&cfg.key？'已配置，未登录'：'未配置')；
+文件。getElementById('sync-st').textContent=status；
+文件。getElementById('sync-last')。textContent=db.LSY？新的日期(db.LSY).toLocaleString()：(sbUser？'已连接，等待同步'：'-')；
+}
+函数edNm(){const n=提示符('给自己起个昵称：'，db.nm====='自定义昵称'？”：(db.nm||”)；if(n==空)返回；db.nm=n.trim()||'自定义昵称'；SV()；rmy()；rPlan()；rsum()；}
+功能pickAv(){document.getElementById('av-file')。点击()；}
+function hdAv(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=x=>{db.av=x.target.result;sv();rMy();};r.readAsDataURL(f);ev.target.value='';}
+函数getSbConfig(){try{return JSON.Parse(localStorage.getitem(SBK))||{}；}catch(e){return{}；}}
+函数initSbClient(){const C=getSbConfig()；if(！c。URL||！c。钥匙||！窗户。supatabase)返回false；尝试{sbClient=window.supbase.createClient(c.url，c.key)；返回true；}catch(e){console.error(e)；返回false；}}
+函数saveSbConfig(){const URL=document.getElementById('sb-url')。价值。修剪().替换(/\/$/，")，key=document。getElementById('sb-key')。价值。trim()；if(！/^https：\/\/[A-zA-Z0-9-]+\.子数据库\.共$/。测试(url)){alert('请填写正确的Supatabase专案URL')；传回；}if(！key){alert('请填写无/可发布key')；return；}localStorage.setitem(SBK，JSON.stringify({url，key}))；if(！initSbClient()){alert('连接配置已保存，但Supatabase SDK加载失败。请检查网络后刷新页面。')；return；}alert('连接配置已保存。现在可以注册或登录账号。')；rmy()；}
+异步函数sbSignUp(){if(！sbClient&&！initSbClient()){alert('请先填写并保存Supatabase项目配置.')；return；}const email=document.getElementById('sb-mail')。价值。trim()，密码=文档.getElementById('sb-password').值；长度<6){alert('请输入邮箱和至少6位密码。')；return；}try{const{data，error}=等待sbClient.Auth.Signup({email，password})；如果(错误)抛出错误；if(data.session){sbUser=data.user；在SbLogin()之后等待；警报('注册成功，云端储存已连接。')；}else警报('注册请求已提交.请先到邮箱完成验证，再回来登录.')；rmy()；}catch(e){alert('注册失败：'+(e.message||'请检查网络及Supabase邮箱验证设置。'))；}}
+异步功能sbSignIn(){if(！sbClient&&！initSbClient()){alert('请先填写并保存Supabase项目配置。')；return；}const email=document.getElementById('sb-电子邮件')。价值。trim()，密码=文档.getElementById('sb-password').值；如果(！电子邮件||！密码){alert('请输入邮箱和密码。')；return；}try{const{data，error}=等待sbClient.Auth.SignInWithPassword({email，password})；如果(错误)抛出错误；sbUser=data.user；在SbLogin()之后等待；rmy()；CLM('M-Sync')；警报('登录成功，数据已同步。')；}catch(e){alert('登录失败：'+(e.message||'请检查邮箱和密码.'))；}}
+异步函数bafterSbLogin(){if(！sbUser)返回；尝试{const{data，error}=等待某人客户端。从('vickylog_data')。选择('data，updated_at').EQ('user_id'，sbUser.身份标识)。maybeSingle()；if(错误)抛出错误；if(data&&data.数据){if(确认('检测到该账号已有云端数据.点击“确定”将用云端数据替换本设备当前数据；点击“取消”则保留本地数据并上传到云端。')){sbApplyingCloud=true；db=normalizeImportedData(data.data)；db.LSY=data。在||日期更新(_U).now()；localStorage.setitem(SK，JSON.Stringify(db))；sbApplyingCloud=false；refreshAllDataViews()；}else{await saveSbNow()；}}else{等待saveSbNow()；}}catch(e){sbUser=null；抛出新错误('已登录，但读取云端数据失败：'+(e.mes圣人||'请确认已执行Supabase SQL初始化脚本。'))；}}
+功能refreshAllDataViews(){rPlan()；rhab()；rsum()；rlists()；rmy()；}
+功能scheduleSbSave(){clearTimeout(sbSaveTimer)；sbSaveTimer=setTimeout(()=>saveSbNow()。catch(e=>{console.误差('云端自动保存失败'，E)；文件。getElementById('sync-st').textContent='同步失败'；})，900)；}
+异步函数saveSbNow(){if(！sbClient||！sbUser)返回；如果(sbBusy){scheduleSbSave()；return；}sbBusy=true；请尝试{const有效负载=JSON。解析(JSON).字符串化(db))；删除有效载荷。LSY；常量{error}=等待客户端。发件人('vickylog_data').upsert({user_id:sbUser.身份标识，数据：有效负载，更新时间(_A)：新建日期().toISOString()}，{onConflict：'user_id'})；如果(错误)抛出error;db.lsy=Date.now();localStorage.setItem(SK,JSON.stringify(db));if(document.getElementById('pg-my').classList.contains('on'))rMy();}finally{sbBusy=false;}}
+异步函数sbSignOut(){if(！sbClient){alert('当前没有登录Supatabase。')；返回；}尝试{waudsbClient.Auth.Signout()；sbUser=null；clearTimeout(sbSaveTimer)；rmy()；alert('已退出云端账号。本地数据仍保留在这台设备上。')；}catch(e){alert('退出失败：'+e.message)；}}
+函数expData(){const a=document.createElement('a')；a.href=URL.createObjectURL(新blob([JSON.stringify(db，null，2)]，{类型：'application/json'}))；a.下载='vickylog-'+fd(新日期())+'.JSON'；a.click()；URL.revokeObjectURL(a.href)；}
+函数normalizeImportedData(原始){
+！生的
+设src
+  for(let i=0;i<4;i++){
+src
+其他
+否则断开；
+  
+常量输出
+//支持当前VickyLog架构和旧的vicky-planner备份架构
+常数arr=(...keys)=>{for(关键字的Const K)if(Array.isArray(src[k]))返回src[k]；return[]；}；
+常量obj
+从……里面出去
+从……里面出去
+从……里面出去
+从……里面出去
+从……里面出去
+类型src
+类型src
+  
+normalizeDayMap
+从……里面出去
+从……里面出去
+dateValue
+Const
+常数hasDate
+让周
+让迪
+周
+如果(！/^\d{4}-W\d{1,2}$/.测试(周)||！数量.isInteger(迪)||迪<0||迪>6){
+      
+Constmi
+米
+Const1月4日
+}
+    
+让日期
+！日期
+返回{...T，身份标识：线(t.身份标识||('t-'+日期.现在()+数学.随机().toString(36).片(2)))，标题：线(t.标题？？t。文本？？t。姓名？？t。内容？？”)，周，d：迪，日期，已完成：！！(t.已完成||t.完成)，到期日：线(t.duedate||t.最终期限||”)}；
+}).过滤器(t=>t.标题.修剪.周.数量.isInteger(t.d)&&t.d>=0&&t.d<=6)；
+从……里面出去
+X'object')。映射(x=>({...X，id：字符串(x.ID||('h-'+日期.now()+数学.随机())，名称：string(x.名称||x.标题||”)，时间：x。时间||x.提醒时间||"，cat:x.cat||x。类别||'morning'，rec:x。记录类型(&&T)x.Rec==='object'？x。Rec：(x.Records&&typeof x。records==='object'？x。记录：{})})。过滤器(x=>x.姓名)；从……里面出去。习惯=出门。习惯。筛选(x=>x&&typeof X==='object').map(x=>({...X，id：字符串(x.ID||('h-'+日期。now()+数学.随机())，名称：字符串(x.名称||x.标题||")，时间：x。时间||x.提醒时间||出门。习惯。筛选器(x=>x&&typeof X==='object')。映射(x=>({...X，id：字符串(x.ID||('h-'+日期.now()+数学.随机())
+r
+r。||||'+日期.now()+数学.random())，name：字符串(x.姓名||'
+返出；返出；
+}
+函数impData
+  
+Const
+r。
+尝试{try{{try{
+尝试{try{{try{
+if(！text)抛出新错误('文件内容为空')；if(！text)抛出新错误('文件内容为空')；
+已解析
+常量进口
+if(！ 确认('导入将覆盖当前本地数据，建议先导出备份。 确定继续？ '))返回；if(！ 确认('导入将覆盖当前本地数据，建议先导出备份。 确定继续？ '))返回；(！ 确认('导入将覆盖当前本地数据，建议先导出备份。 确定继续？ '))返回；if(！ 确认('导入将覆盖当前本地数据，建议先导出备份。 确定继续？ '))返回；
+DB
+DB一个/^(\d{4})-W(\d日期||").localeCompare(String(a.date||"))||String(b.周)。localeCompare(字符串(a.wk))||数量(B.D)-数字(a.d))[0]；常数匹配=字符串(last.周||")。匹配(/SV()；rPlan()；rhab()；rsum()；rlists()；rmy()；sv()；rPlan()；rhab()；rsum()；rlists()；rmy()；estDate&&！数量。isNaN(lestDate.getTime())sumMonth=new日期(lestDate.getFullYear()，lestDate.getMonth()，1)；否则if(匹配){const D=新日期(cmon)；d.setDate(d.GETDATE()+seld)；sumMonth=新建日期(d.getFullYear()，d.getMonth()，1)；}}
+{4})-W(
+SV()；rPlan()；rhab()；rsum()；rlists()；rmy()；sv()；rPlan()；rhab()；rsum()；rlists()；rmy()；estDate&&！数量。isNaN(lestDate.getTime())sumMonth=new日期(lestDate.getFullYear()，lestDate.getMonth()，1)；否则if(匹配){const D=新日期(cmon)；d.setDate(d.GETDATE()+seld)；sumMonth=新建日期(d.getFullYear()，d.getMonth()，1)；}}
+'导入失败：'
+最终{ev.目标。value="；}finally{ev.目标。价值="；}{ev.目标。value="；}finally{ev.目标。价值="；}
+'文件结构不兼容'
+r.onerror=()=>{alert('读取文件失败，请重新选择文件。')；ev.target.value="；}；r.onerror=()=>{alert('读取文件失败，请重新选择文件。')；ev.target.value="；}；.onerror=()=>{alert('读取文件失败，请重新选择文件。')；电动汽车。目标。值=r。ReadAsText(f，'UTF-8')；r.ReadAsText(f，'UTF-8')；
+r。readAsText(f，'UTF-8')；r.ReadAsText(f，'UTF-8')；(f，'UTF-8')；r.readAsText(f，'UTF-8')；
+}
+
+readAsText
+功能OPM(id){document.getElementById(id).类列表。add('on')；}OPM(id){document.getElementById(id).classList。add('on')；}(id){document.getElementById(id).classList。add('on')；}OPM(id){document.getElementById(id).classList.Add('on')；}(id){document.getElementById(id).类列表.add('on')；}OPM(id){document.getElementById(id).类列表。add('on')；}(id){document.getElementById(id).classList.add('on')；}OPM(id){document.getElementById(id).classList.Add('on')；}
+功能CLM(id){document.getElementById(id).类列表。remove('on')；}CLM(id){document.getElementById(id).classList.remove('on')；}(id){document.getElementById(id).classList.remove('on')；}CLM(id){document.getElementById(id).classList。remove('on')；}(id){document.getElementById(id).类列表.remove('on')；}CLM(id){document.getElementById(id)。类列表。移除('on')；}(id){文件.getElementById(id).remove(""上的"")；}CLM(id){文档.getElementById(id).remove(""上的"")；}
+文件。querySelectorAll('.MOV').foreach(m=>{m.addEventListener('click'，ev=>{if(ev.target===m)m。classList.remove('on')；})；})；.querySelectorAll('.mov').forEach(m=>{m.addEventListener('click',ev=>{if(ev.target===m)m.classList.remove('on');});});('.MOV').foreach(m=>{m.addEventListener('click'，ev=>{if(ev.target===m)m。classList.remove('on')；})；})；.querySelectorAll('.mov').forEach(m=>{m.addEventListener('click',ev=>{if(ev.target===m)m.classList.remove('on');});});('.MOV').foreach(m=>{m.addEventListener('click'，ev=>{if(ev.target===m)m。classList.remove('on')；})；})；.querySelectorAll('.mov').forEach(m=>{m.addEventListener('click',ev=>{if(ev.target===m)m.classList.remove('on');});});('.MOV').foreach(m=>{m.addEventListener('click'，ev=>{if(ev.target===m)m。classList.remove('on')；})；})；.querySelectorAll('.mov').forEach(m=>{m.addEventListener('click',ev=>{if(ev.target===m)m.classList.remove('on');});});
+文件。getElementById('ib-inp')。addEventListener('keydown'，ev=>{if(ev.key==='Enter'){ev.protventDefault()；addIb()；}})；.getElementById('ib-inp').addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addIb();}});('ib-inp')。addEventListener('keydown'，ev=>{if(ev.key==='Enter'){ev.protventDefault()；addIb()；}})；.getElementById('ib-inp').addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addIb();}});('ib-inp')。addEventListener('keydown'，ev=>{if(ev.key==='Enter'){ev.protventDefault()；addIb()；}})；.getElementById('ib-inp').addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addIb();}});('ib-inp')。addEventListener('keydown'，ev=>{if(ev.key==='Enter'){ev.protventDefault()；addIb()；}})；.getElementById('ib-inp').addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addIb();}});
+文件。getElementById('ib-add-btn')。onClick=ev=>{ev。preventDefault()；ev.stopPropagation()；addIb()；}；.getElementById('ib-add-btn').onclick=ev=>{ev.preventDefault();ev.stopPropagation();addIb();};('ib-add-btn')。onClick=ev=>{ev。preventDefault()；ev.stopPropagation()；addIb()；}；.getElementById('ib-add-btn').onclick=ev=>{ev.preventDefault();ev.stopPropagation();addIb();};('ib-add-btn')。onClick=ev=>{ev。preventDefault()；ev.stopPropagation()；addIb()；}；.getElementById('ib-add-btn').onclick=ev=>{ev.preventDefault();ev.stopPropagation();addIb();};('ib-add-btn')。onClick=ev=>{ev。preventDefault()；ev.stopPropagation()；addIb()；}；.getElementById('ib-add-btn').onclick=ev=>{ev.preventDefault();ev.stopPropagation();addIb();};
+文件。getElementById('task-inp')。addEventListener('keydown'，ev=>{if(ev.key==='Enter'){ev.prostateDefault()；addTask()；}})；.getElementById('task-inp').addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addTask();}});('task-inp')。addEventListener('keydown'，ev=>{if(ev.key==='Enter'){ev.prostateDefault()；addTask()；}})；.getElementById('task-inp').addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addTask();}});('task-inp')。addEventListener('keydown'，ev=>{if(ev.key==='Enter'){ev.prostateDefault()；addTask()；}})；.getElementById('task-inp').addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addTask();}});('task-inp')。addEventListener('keydown'，ev=>{if(ev.key==='Enter'){ev.prostateDefault()；addTask()；}})；.getElementById('task-inp').addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addTask();}});
+文件。getElementById('add-task-btn')。onClick=ev=>{ev.preventDefault()；ev.stopPropagation()；addTask()；}；.getElementById('add-task-btn').onclick=ev=>{ev.preventDefault();ev.stopPropagation();addTask();};('add-task-btn')。onClick=ev=>{ev.preventDefault()；ev.stopPropagation()；addTask()；}；.getElementById('add-task-btn').onclick=ev=>{ev.preventDefault();ev.stopPropagation();addTask();};('add-task-btn')。onClick=ev=>{ev.preventDefault()；ev.stopPropagation()；addTask()；}；.getElementById('add-task-btn').onclick=ev=>{ev.preventDefault();ev.stopPropagation();addTask();};('add-task-btn')。onClick=ev=>{ev.preventDefault()；ev.stopPropagation()；addTask()；}；.getElementById('add-task-btn').onclick=ev=>{ev.preventDefault();ev.stopPropagation();addTask();};
+
+LD()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；()；rPlan()；();rPlan();
+(函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据.会话){sbUser=数据。会议。用户；尝试{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。getElementById('sync-st').textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据.会话){sbUser=数据。会议。用户；尝试{await函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据.会话){sbUser=数据。会议。用户；尝试{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。getElementById('sync-st').textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据.会话){sbUser=数据。会议。用户；尝试{await函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>；如果(数据。会话){SBUser=数据。会议。用户；尝试{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。getElementById('sync-st').textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据.会话){sbUser=数据。会议。用户；尝试{await faterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。g函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据.会话){sbUser=数据。会议。用户；尝试{awaitafterSbLogif(错误)抛出错误；if(助教.会话){sbUser=数据。会议。用户；尝试{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。getElementById('sync-st').textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据.会话){sbUser=数据。会议。用户；尝试{await faterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。g函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；如果(数据.会话){sbUser=in()；rmy()；}catch(e){console.错误(e)；文档。通用电气tElementById('sync-st').textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据.会话){sbUser=数据。会议。用户；尝试{await()；rmy()；}catch(e){console.错误(e)；文档。g函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据。会话){sbUser=数据。会议。用户；尝试{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。getElementById('sync-s{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。getElementById('sync-st').textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据。会话){sbUser=数据。会议。用户；尝试{await()；rmy()；}catch(e){console。错误(e)；文档。g函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(data.会话){sbUser=数据。会议。用户；尝试{awaitafterSbLogin()；rmy()；}catch(e){console.T').textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据。会话){sbUser=数据。会议。用户；尝试{await faterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。etElementById('sync-st').textContent='同步异常'；}}auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据。会话){sbUser=数据。会议。用户；尝试{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。getElementById('sync-st').textContent='同步异常'；}}}).catch(e=>控制台。(e)；文档。getElementById('sync-st').textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(data.会话){sbUser=数据。会议。用户；尝试{await faterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。etElementById('sync-st').textContent='同步异常'；}}auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(data.会话){sbUser=数据。会议。用户；尝试{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。getElementById('sync-st').textContent='同步异常'；}}}).catch(e=>console.错误('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据。会话){sbUser=数据。会议。用户；尝试{await()；rmy()；}catch(e){console.错误(e)；文档。etElementById('sync-st').textContent='同步异常'；}}auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(数据。会话){sbUser=数据。会议。用户；尝试{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。getElementById('sync-st').textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；函数bootSupabase(){i('Supabase初始化失败'，E))；}})()；函数bootSupabase(){if(initSbClient()){sbClient.auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(data.会话){sbUser=数据。会议。用户；尝试{await()；rmy()；}catch(e){console。错误(e)；文档。etElementById('sync-st')。textContent='同步异常'；}}auth.getSession()。然后(异步({data，error})=>{if(error)抛出错误；if(data.会话){sbUser=数据。会议。用户；尝试{await afterSbLogin()；rmy()；}catch(e){console。错误(e)；文档。getElementById('sync-st')。textContent='同步异常'；}}}).catch(e=>console.error('Supabase初始化失败'，e))；}})()；function bootSupabaseF(initSbClient()){sbClient。auth.getSession().then(异步({data，error})=>{if(error)抛出错误；if(data.session){sbUser=data.session.user；try{awaitafterSbLogin()；rmy()；}catch(e){console.错误(e)；文档。etElementById('sync-st').textContent=}).Catch(e=>控制台。错误('Supabase初始化失败'，E))；}})()；('sync-st').textContent='同步异常'；}}})。catch(e=>console.error('Supabase初始化失败'，e))；}})()；；}}})。catch(e=>控制台。错误('Supabase初始化失败'，E))；}})()；('sync-st').textContent='同步异常'；}}})。catch(e=>console.error('Supabase初始化失败'，E))；}})()；()；rmy()；}catch(e){){if(initSbClient()){sbClient.auth.getSession().then(async({data,error})=>{if(error)throw error;if(data.session){sbUser=data.session.user;try{await afterSbLogin()；rmy()；}catch(e){console。错误(e)；文档。etElementById('sync-st')。textContent=})。catch(e=>控制台。错误('Supabase初始化失败'，E))；}})()；('sync-st')。textContent='同步异常'；}}})。catch(e=>console.error('Supabase初始化失败'，e))；}})()；；}}})。catch(e=>控制台。错误('Supabase初始化失败'，E))；}})()；('sync-st')。textContent='同步异常'；}}})。catch(e=>console.error('Supabase初始化失败'，e))；}})()；();rMy();控制台。错误(e)；document.etElementById('sync-st')。textContent=}).Catch(e=>控制台。错误('Supabase初始化失败'，E))；}})()；('sync-st')。textContent='同步异常'；}}})。catch(e=>console.error('Supabase初始化失败'，e))；}})()；；}}})。catch(e=>控制台。错误('Supabase初始化失败'，E))；}})()；('sync-st')。textContent='同步异常'；}}})。catch(e=>console.error('Supabase初始化失败'，e))；}})()；catch(e){console.error(e);document.etElementById('sync-st').textContent=}).catch(e=>console.error('Supabase初始化失败'，E))；}})()；('sync-st')。textContent='同步异常'；}}})。catch(e=>console.error('Supabase初始化失败'，e))；}})()；；}}}).catch(e=>console.error('Supabase初始化失败'，e))；}})()；('sync-st').textContent='同步异常';}}}).catch(e=>console.error('Supabase 初始化失败',e));}})();
+</剧本>剧本>/脚本>脚本>/剧本>剧本>/脚本>脚本>/剧本>剧本>/脚本>脚本>/剧本>剧本>/脚本>脚本>
+</身体>身体>/身体>身体>/身体>身体>/身体>身体>/身体>身体>/身体>身体>/身体>身体>/身体>身体>
+</超文本标记语言>超文本标记语言>/超文本标记语言>超文本标记语言>/超文本标记语言>超文本标记语言>/超文本标记语言>超文本标记语言>/超文本标记语言>超文本标记语言>/超文本标记语言>超文本标记语言>/超文本标记语言>超文本标记语言>/超文本标记语言>超文本标记语言>
